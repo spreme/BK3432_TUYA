@@ -34,10 +34,31 @@
 #include "rwip_config.h"
 #include "user_config.h"
 
-#if (UART_PRINTF_EN && UART_DRIVER)
+//#if (UART_PRINTF_EN && UART_DRIVER)
 
-#if  !BLE_TESTER
+//#if  !BLE_TESTER
+//#define UART_PRINTF	uart_printf //uart_printf
+//#else
+//#define UART_PRINTF uart_printf_null //uart_printf 
+//#endif //!BLE_TESTER
+
+//#else
+//#define UART_PRINTF uart_printf_null 
+//#endif // #if UART_PRINTF_EN
+#if (UART_PRINTF_EN && (UART_DRIVER || UART2_DRIVER))
+
+#if  !BLE_TESTER &&  UART_1_PRINTF
+#ifndef UART_PRINTF
 #define UART_PRINTF	uart_printf //uart_printf
+#define UART_PUTCHAR uart_putchar //uart_printf
+#endif
+
+#elif !BLE_TESTER &&  UART_2_PRINTF
+#ifndef UART_PRINTF
+#define UART_PRINTF uart2_printf //uart_printf 
+#define UART_PUTCHAR uart2_putchar //uart_printf
+#endif
+
 #else
 #define UART_PRINTF uart_printf_null //uart_printf 
 #endif //!BLE_TESTER
@@ -45,7 +66,7 @@
 #else
 #define UART_PRINTF uart_printf_null 
 #endif // #if UART_PRINTF_EN
- 
+
 
 /*
  * ENUMERATION DEFINITIONS

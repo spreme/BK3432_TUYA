@@ -51,16 +51,16 @@
 
 __TUYA_BLE_WEAK void tuya_ble_custom_app_uart_common_process(uint8_t *p_in_data,uint16_t in_len)
 {
-    uint8_t cmd = p_in_data[3];
-    uint16_t data_len = (p_in_data[4]<<8) + p_in_data[5];
-    uint8_t *data_buffer = p_in_data+6;
+//    uint8_t cmd = p_in_data[3];
+//    uint16_t data_len = (p_in_data[4]<<8) + p_in_data[5];
+//    uint8_t *data_buffer = p_in_data+6;
 
-    switch(cmd)
-    {
+//    switch(cmd)
+//    {
 
-    default:
-        break;
-    };
+//    default:
+//        break;
+//    };
 
 }
 
@@ -69,8 +69,8 @@ __TUYA_BLE_WEAK void tuya_ble_custom_app_uart_common_process(uint8_t *p_in_data,
 void tuya_ble_uart_common_process(uint8_t *p_in_data,uint16_t in_len)
 {
     uint8_t cmd = p_in_data[3];
-    uint16_t data_len = (p_in_data[4]<<8) + p_in_data[5];
-    uint8_t *data_buffer = p_in_data+6;
+//    uint16_t data_len = (p_in_data[4]<<8) + p_in_data[5];
+//    uint8_t *data_buffer = p_in_data+6;
 
     switch(cmd)
     {

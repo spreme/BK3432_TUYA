@@ -43,8 +43,8 @@
 static uint32_t tuya_ble_firmware_version = 0;
 static uint32_t tuya_ble_hardware_version = 0;
 
-static uint32_t tuya_ble_mcu_firmware_version = 0;
-static uint32_t tuya_ble_mcu_hardware_version = 0;
+//static uint32_t tuya_ble_mcu_firmware_version = 0;
+//static uint32_t tuya_ble_mcu_hardware_version = 0;
 
 
 static  tuya_ble_r_air_recv_packet  air_recv_packet;
@@ -829,7 +829,7 @@ static void tuya_ble_handle_ble_factory_test_req(uint8_t*recv_data,uint16_t recv
     uint16_t data_len;
     uint32_t ack_sn;
     uint8_t sum;
-    uint8_t encry_mode;
+//    uint8_t encry_mode;
 
     data_len = (recv_data[11]<<8) + recv_data[12];
 
@@ -843,7 +843,7 @@ static void tuya_ble_handle_ble_factory_test_req(uint8_t*recv_data,uint16_t recv
     ack_sn += recv_data[3]<<8;
     ack_sn += recv_data[4];
 
-    encry_mode = recv_data[0];
+//    encry_mode = recv_data[0];
 
     if((recv_data[13]==0x66)&&(recv_data[14]==0xAA))
     {
@@ -1393,8 +1393,8 @@ uint8_t tuya_ble_commData_send(uint16_t cmd,uint32_t ack_sn,uint8_t *data,uint16
     mtp_ret ret;
     uint8_t send_len = 0;
     uint8_t p_buf[20];
-    uint32_t err=0;
-    int8_t retries_cnt = 0;
+//    uint32_t err=0;
+//    int8_t retries_cnt = 0;
     uint8_t iv[16];
     uint16_t rand_value = 0,i=0;
     uint16_t crc16 = 0;

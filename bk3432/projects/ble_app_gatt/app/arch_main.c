@@ -58,6 +58,7 @@
 #include "wdt.h"
 #include "rtc.h"
 #include "user_config.h"
+#include "ke_timer.h"
 
 /**
  ****************************************************************************************
@@ -91,29 +92,31 @@ extern void code_sanity_check(void);
 #if (UART_DRIVER)
 void uart_rx_handler(uint8_t *buf, uint8_t len);
 #endif
-
-#if ((UART_PRINTF_EN) &&(UART_DRIVER))
+#if (UART2_DRIVER)
+void uart2_rx_handler(uint8_t *buf, uint8_t len);
+#endif
+#if ((UART_PRINTF_EN) &&(UART_DRIVER || UART2_DRIVER))
 void assert_err(const char *condition, const char * file, int line)
 {
-	uart_printf("%s,condition %s,file %s,line = %d\r\n",__func__,condition,file,line);
+	UART_PRINTF("%s,condition %s,file %s,line = %d\r\n",__func__,condition,file,line);
 
 }
 
 void assert_param(int param0, int param1, const char * file, int line)
 {
-	uart_printf("%s,param0 = %d,param1 = %d,file = %s,line = %d\r\n",__func__,param0,param1,file,line);
+	UART_PRINTF("%s,param0 = %d,param1 = %d,file = %s,line = %d\r\n",__func__,param0,param1,file,line);
 
 }
 
 void assert_warn(int param0, int param1, const char * file, int line)
 {
-	uart_printf("%s,param0 = %d,param1 = %d,file = %s,line = %d\r\n",__func__,param0,param1,file,line);
+	UART_PRINTF("%s,param0 = %d,param1 = %d,file = %s,line = %d\r\n",__func__,param0,param1,file,line);
 
 }
 
 void dump_data(uint8_t* data, uint16_t length)
 {
-	uart_printf("%s,data = %d,length = %d,file = %s,line = %d\r\n",__func__,data,length);
+	UART_PRINTF("%s,data = %d,length = %d,file = %s,line = %d\r\n",__func__,data,length);
 
 }
 #else
@@ -156,7 +159,12 @@ void platform_reset(uint32_t error)
 
 #if UART_PRINTF_EN
 	// Wait UART transfer finished
+	#if UART_1_INIT
 	uart_finish_transfers();
+	#endif
+	#if UART_2_INIT
+	uart2_finish_transfers();
+	#endif
 #endif //UART_PRINTF_EN
 
 
@@ -176,6 +184,8 @@ void platform_reset(uint32_t error)
 
 #include "tuya_ble_type.h"
 extern tuya_ble_parameters_settings_t tuya_ble_current_para;
+uint8_t tmp_bt_mac_str[6] = {0xDC, 0x23, 0x4D, 0x67, 0x67, 0xEC};
+
 void bdaddr_env_init(void)
 {
 	struct bd_addr co_bdaddr;
@@ -188,7 +198,8 @@ void bdaddr_env_init(void)
 	}
     else
     {
-        memset(&co_default_bdaddr,0xFE,6);
+//        memset(&co_default_bdaddr,0xFE,6);
+        memcpy(&co_default_bdaddr,tmp_bt_mac_str,6);
     }
 }
 
@@ -199,7 +210,7 @@ void ble_clk_enable(void)
 }
 
 
-#if 1
+#if 0
 void user_timer_cb(unsigned char ucChannel)
 {
     gpio_triger(0x11);
@@ -212,7 +223,7 @@ void user_timer_init(void)
 	rwip_prevent_sleep_set(BK_DRIVER_TIMER_ACTIVE);
 	PWM_DRV_DESC timer_desc;
 
-	timer_desc.channel = 1;            				  
+	timer_desc.channel = 1;
     timer_desc.mode    = 1<<0 | 1<<1 | 1<<2 | 1<<4;   
     timer_desc.end_value  = 65534;                      
     timer_desc.duty_cycle = 0;                        
@@ -226,6 +237,117 @@ void user_timer_init(void)
 }
 #endif
 
+#ifdef KEY_BUZZER_FUNC
+PWM_DRV_DESC timer_desc_2;
+
+void beep_test(void)
+{
+	timer_desc_2.duty_cycle = 3;
+	pwm_set_duty(&timer_desc_2);
+	Delay_ms(100);
+	timer_desc_2.duty_cycle = 0;
+	pwm_set_duty(&timer_desc_2);
+}
+
+void beep_init(void)
+{	
+	timer_desc_2.channel = 2;
+	timer_desc_2.mode = 1<<0 | 0<<1 | 0<<2 | 0<<4;
+	timer_desc_2.end_value = 6;
+	timer_desc_2.duty_cycle = 0;
+	pwm_init(&timer_desc_2);
+}
+#endif
+
+FEED_PLAN_t info_default = 
+{
+	FLASH_KEEP_VAL,					//标志位
+	0,								//喂食锁
+	0,								//RTC是否存时间标志
+	0,								//时区正负
+	8,								//时区
+	0,								//重启标志
+	0,								//录音时长
+//	{
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//		{0,0,0,0,0},
+//	},
+};
+
+void flash_data_init(uint8_t type)
+{
+	//复位
+	UART_PRINTF("flash_data_init:%d \n",type);
+	if(type > 0)
+	{
+		#if defined NO_RECORD_FUNC || defined KEY_BUZZER_FUNC
+		beep_test();
+		Delay_ms(200);
+		beep_test();
+		Delay_ms(100);
+		beep_test();
+		#else
+		gpio_set(SOUND_REC, RECORD_ON);
+		#ifdef NEW_RECORD_IC
+		Delay_ms(1300);
+		#else
+		Delay_ms(300);	
+		#endif
+		gpio_set(SOUND_REC, RECORD_OFF);
+		#endif
+
+		memset(&ty_plan, 0, sizeof(FEED_PLAN_t));
+//		ty_plan.mark = FLASH_KEEP_VAL;
+		memcpy(&ty_plan, &info_default, sizeof(FEED_PLAN_t));
+//		UART_PRINTF("reset ty_plan 1\n");
+		save_flash(FLASH_PLAN);
+		
+		memset(&ty_logs, 0, sizeof(FEED_LOG_INFO_t));
+		ty_logs.mark = FLASH_KEEP_VAL;
+//		UART_PRINTF("reset ty_logs 1\n");
+		save_flash(FLASH_LOG);
+		
+		Delay_ms(500);
+		platform_reset(0);
+//		wdt_enable(10);
+
+	}
+	else
+	{
+		memset(&ty_plan, 0, sizeof(FEED_PLAN_t));
+		memset(&ty_logs, 0, sizeof(FEED_LOG_INFO_t));
+		
+		tuya_ble_nv_read(BLE_SAVE_ADDR, (uint8_t *) &ty_logs, sizeof(FEED_LOG_INFO_t));
+		tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+//		flash_read(FLASH_SPACE_TYPE_NVR, BLE_SAVE_ADDR, sizeof(FEED_LOG_INFO_t), (uint8_t *) &ty_logs);
+//		flash_read(FLASH_SPACE_TYPE_NVR, BLE_PLAN_ADDR, sizeof(FEED_PLAN_t), (uint8_t *) &ty_plan);
+		printf_flash_info();
+		if(ty_plan.mark != FLASH_KEEP_VAL)
+		{
+//			UART_PRINTF("reset flash  ty_plan\r\n");
+			memset(&ty_plan, 0, sizeof(FEED_PLAN_t));
+			ty_plan.mark = FLASH_KEEP_VAL;
+			save_flash(FLASH_PLAN);
+		}
+		
+		if(ty_logs.mark != FLASH_KEEP_VAL)
+		{
+//			UART_PRINTF("reset flash  ty_logs \r\n");
+
+			memset(&ty_logs, 0, sizeof(FEED_LOG_INFO_t));
+			ty_logs.mark = FLASH_KEEP_VAL;
+			save_flash(FLASH_LOG);
+		}
+	}
+}
 
 /**
  *******************************************************************************
@@ -242,6 +364,7 @@ extern struct rom_env_tag rom_env;
 void rwip_eif_api_init(void);
 void rw_main(void)
 {
+	uint8_t utc_flag = 0;
 
 	/*
 	 ***************************************************************************
@@ -270,12 +393,16 @@ void rw_main(void)
 	// Initialize the Interrupt Controller
 	intc_init();
 	// Initialize UART component
-#if (UART_DRIVER)
-	uart_init(115200);
-    uart2_init(115200);	
-	//uart_cb_register(uart_rx_handler);
-#endif
+//#if (UART_DRIVER)
+////	uart_init(115200);
+//    uart2_init(115200);	
+//	//uart_cb_register(uart_rx_handler);
+//#endif
 
+#if (UART2_DRIVER) && UART_2_INIT
+	uart2_init(115200);
+	uart2_cb_register(uart2_rx_handler);
+#endif
 #if PLF_NVDS
 	// Initialize NVDS module
 	struct nvds_env_tag env;
@@ -308,15 +435,29 @@ void rw_main(void)
 
 	// finally start interrupt handling
 	GLOBAL_INT_START();
-
-#if 0
-    gpio_config(0x11, OUTPUT, PULL_NONE);
-    gpio_set(0x11, 0);
-    user_timer_init();
-#endif
 	
+	wdt_enable(0xffff);
 	UART_PRINTF("start 2\r\n");
+	UART_PRINTF("version:%s \r\n",USER_VERSION);
+	UART_PRINTF("data:%s \r\n",USER_DATA);
 
+	gpio_init();
+	SET_LED_ON(LED_GREEN);
+	SET_LED_ON(LED_RED);
+	adc_init(BATTERY_CHAN,1);
+	#if MOTOR_REVERSE_ADC
+	adc_reverse_init();
+	#endif
+//	beep_init();
+
+#if (UART_DRIVER) && UART_1_INIT
+	uart_init(115200);
+	uart_cb_register(uart_rx_handler);
+#endif
+	utc_update();
+	utc_set_clock(1);
+	
+	flash_data_init(0);
 	/*
 	 ***************************************************************************
 	 * Main loop
@@ -326,9 +467,64 @@ void rw_main(void)
 	{
 		//schedule all pending events
 		rwip_schedule();
+		wdt_enable(0xffff);
+		
+//		UART_PRINTF("while \r\n");
+		if(utc_flag == 0)
+		{
+			utc_flag = 1;
+			#ifdef FUNC_315MHZ
+			BK_315MHz_timer_set();
+			#endif
+			ke_timer_set(UTC_TASK, TASK_APP, 100);
+			ke_timer_set(KEY_SCAN_TASK, TASK_APP, 10);	
+		}
+		
+		#if BATTERY_FUNC
+		if(check_voltage_flag && feed_status == FEED_STEP_NONE)
+		{
+			disp_voltage();					//电量检测			
+		}
+		#endif	
+		
+		#ifdef FUNC_315MHZ
+		if(byte_flag == 1)
+		{
+			byte_flag = 0;
+			byte_debug_show();
+		}
+		#endif
+		
+		if(feed_status == FEED_STEP_NONE)
+			feed_check();
+		#ifdef MOTOR_REVERSE_ADC
+		else if(feed_status > FEED_STEP_SOUND)
+		{
+			adc_reverse();
+			Delay_ms(10);
+		}
+		#endif
+		
+		if(restore_flag == 1)
+		{
+			tuya_ble_device_factory_reset();
+			restore_flag = 2;
+		}
+		else if(restore_flag == 3)
+		{
+			flash_data_init(1);
+			restore_flag = 4;
+		}
 
+
+//		if(debug_flag == 1) 
+//		{
+//			debug_flag = 0;
+//			UART_PRINTF("####### BK_315_callback 10000 times #######\r\n");
+//		}
+		
 		// Checks for sleep have to be done with interrupt disabled
-		GLOBAL_INT_DISABLE();
+//		GLOBAL_INT_DISABLE();
 
 		//oad_updating_user_section_pro();
 
@@ -357,8 +553,8 @@ void rw_main(void)
 			cpu_idle_sleep();
 		}
 #endif
-		Stack_Integrity_Check();
-		GLOBAL_INT_RESTORE();
+//		Stack_Integrity_Check();
+//		GLOBAL_INT_RESTORE();
 	}
 }
 
@@ -375,13 +571,32 @@ static void uart_rx_handler(uint8_t *buf, uint8_t len)
 	
 }
 #endif
+#if (UART2_DRIVER)
+static void uart2_rx_handler(uint8_t *buf, uint8_t len)
+{
+	for(uint8_t i=0; i<len; i++)
+	{
+		UART_PRINTF("0x%x ", buf[i]);
+	}
+	UART_PRINTF("\r\n");
+}
+#endif
 
 void rwip_eif_api_init(void)
 {
+	#ifdef UART_1_INIT
 	uart_api.read = &uart_read;
 	uart_api.write = &uart_write;
 	uart_api.flow_on = &uart_flow_on;
 	uart_api.flow_off = &uart_flow_off;
+	#endif
+	
+	#ifdef UART_2_INIT
+	uart_api.read = &uart2_read;
+	uart_api.write = &uart2_write;
+	uart_api.flow_on = &uart2_flow_on;
+	uart_api.flow_off = &uart2_flow_off;	
+	#endif
 }
 
 const struct rwip_eif_api* rwip_eif_get(uint8_t type)
@@ -416,41 +631,41 @@ const struct rwip_eif_api* rwip_eif_get(uint8_t type)
 	return ret;
 }
 
-static void Stack_Integrity_Check(void)
-{
-	if ((REG_PL_RD(STACK_BASE_UNUSED)!= BOOT_PATTERN_UNUSED))
-	{
-		while(1)
-		{
-			uart_putchar("Stack_Integrity_Check STACK_BASE_UNUSED fail!\r\n");
-		}
-	}
+//static void Stack_Integrity_Check(void)
+//{
+//	if ((REG_PL_RD(STACK_BASE_UNUSED)!= BOOT_PATTERN_UNUSED))
+//	{
+//		while(1)
+//		{
+//			UART_PUTCHAR("Stack_Integrity_Check STACK_BASE_UNUSED fail!\r\n");
+//		}
+//	}
 
-	if ((REG_PL_RD(STACK_BASE_SVC)!= BOOT_PATTERN_SVC))
-	{
-		while(1)
-		{
-			uart_putchar("Stack_Integrity_Check STACK_BASE_SVC fail!\r\n");
-		}
-	}
+//	if ((REG_PL_RD(STACK_BASE_SVC)!= BOOT_PATTERN_SVC))
+//	{
+//		while(1)
+//		{
+//			UART_PUTCHAR("Stack_Integrity_Check STACK_BASE_SVC fail!\r\n");
+//		}
+//	}
 
-	if ((REG_PL_RD(STACK_BASE_FIQ)!= BOOT_PATTERN_FIQ))
-	{
-		while(1)
-		{
-			uart_putchar("Stack_Integrity_Check STACK_BASE_FIQ fail!\r\n");
-		}
-	}
+//	if ((REG_PL_RD(STACK_BASE_FIQ)!= BOOT_PATTERN_FIQ))
+//	{
+//		while(1)
+//		{
+//			UART_PUTCHAR("Stack_Integrity_Check STACK_BASE_FIQ fail!\r\n");
+//		}
+//	}
 
-	if ((REG_PL_RD(STACK_BASE_IRQ)!= BOOT_PATTERN_IRQ))
-	{
-		while(1)
-		{
-			uart_putchar("Stack_Integrity_Check STACK_BASE_IRQ fail!\r\n");
-		}
-	}
+//	if ((REG_PL_RD(STACK_BASE_IRQ)!= BOOT_PATTERN_IRQ))
+//	{
+//		while(1)
+//		{
+//			UART_PUTCHAR("Stack_Integrity_Check STACK_BASE_IRQ fail!\r\n");
+//		}
+//	}
 
-}
+//}
 
 
 void rom_env_init(struct rom_env_tag *api)
@@ -474,9 +689,14 @@ void rom_env_init(struct rom_env_tag *api)
 	rom_env.platform_reset = platform_reset;
 	rom_env.assert_err = assert_err;
 	rom_env.assert_param = assert_param;
+	#if UART_1_INIT
 	rom_env.Read_Uart_Buf = Read_Uart_Buf;
 	rom_env.uart_clear_rxfifo = uart_clear_rxfifo;
-
+	#endif
+	#if UART_2_INIT
+	rom_env.Read_Uart2_Buf = Read_Uart2_Buf;
+	rom_env.uart2_clear_rxfifo = uart2_clear_rxfifo;
+	#endif
 }
 
 /// @} DRIVERS

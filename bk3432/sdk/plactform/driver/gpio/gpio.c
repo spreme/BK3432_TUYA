@@ -29,7 +29,8 @@
 #include "app_task.h"
 #include "uart.h"
 #include "user_config.h"
-
+#include "ke_timer.h"
+#include "adc.h"
 
 volatile unsigned long * GPIO_CFG[] = 
 {
@@ -144,29 +145,326 @@ void gpio_set(uint8_t gpio, uint8_t val)
 void gpio_debug_msg_init()
 {
 
-	*(GPIO_CFG[0]) = 0X0000ff;		    	
-	*(GPIO_DATA[0]) = 0;
+	*(GPIO_CFG[1]) = 0X0000ff;		    	
+	*(GPIO_DATA[1]) = 0;
 	REG_AHB0_ICU_DIGITAL_PWD |= (0X01 << 4);
 }
 #endif
 
-void gpio_init(void)
-{
-#if DEBUG_HW
-	*(GPIO_CFG[2]) = 0XFF0000;
-	*(GPIO_DATA[2]) = 0;
-#endif
-    //*(GPIO_CFG[0]) = 0X0000ff;		    	
-    //*(GPIO_DATA[0]) = 0;
+#define INT_HIGH_EDGE	1
+#define INT_LOW_EDGE	0
 
-#if GPIO_DBG_MSG
-	gpio_debug_msg_init();
-	gpio_config(0x34, OUTPUT, PULL_NONE);
-	gpio_set(0x34, 0);
-#endif
+static void jk_gpio_int_config(uint8_t gpio, uint8_t trigger)
+{
+	if(trigger == INT_HIGH_EDGE)
+		REG_APB5_GPIO_WUATOD_TYPE |= 0<<(8*(gpio>>4)+(gpio&0x0f)); //0<<2 = 0	//上升沿触发
+	else                              
+		REG_APB5_GPIO_WUATOD_TYPE |= 1<<(8*(gpio>>4)+(gpio&0x0f)); //1<<2 = 4	//下降沿触发
+	
+	REG_APB5_GPIO_WUATOD_STAT |= 1<<(8*(gpio>>4)+(gpio&0x0f));
+	Delay_ms(2);
+	REG_APB5_GPIO_WUATOD_ENABLE |= 1<<(8*(gpio>>4)+(gpio&0x0f));
+	REG_AHB0_ICU_DEEP_SLEEP0 |= 1<<(8*(gpio>>4)+(gpio&0x0f));
+}
+
+static void jk_gpio_int_en(void)
+{
+	REG_AHB0_ICU_INT_ENABLE |= (0x01 << 9);
 }
 
 
+static uint32_t suble_gpio_irq_pin_change_format(uint32_t pin)
+{
+    uint32_t zero_count = 0;
+    for(int idx=0; idx<32; idx++) {
+        pin = pin>>1;
+        if(pin == 0) {
+            break;
+        }
+        zero_count++;
+    }
+    return (((zero_count/8)*0x10) + (zero_count%8));
+}
+#if DU_PD01B
+static void gpio_irq_handler(uint32_t pin)
+{
+	UART_PRINTF("key pin:%d \r\n",pin);
+
+	pin = suble_gpio_irq_pin_change_format(pin);
+
+	tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+//	if(keep_dowm_flag == 0)
+	{
+		switch(pin)
+		{
+			case RECORD_KEY:
+			UART_PRINTF("RECORD_KEY \r\n");
+//			if(lock_flag == 0 && (set_val_flag == 0))
+//				ke_timer_set(REC_KEY_TASK, TASK_APP, 10);
+//			else if(set_val_flag)
+				ke_timer_set(REC_KEY_TASK, TASK_APP, 10);
+			break;
+
+			case SET_KEY:
+			UART_PRINTF("SET_KEY \r\n");
+			ke_timer_set(KEY_SCAN_TASK, TASK_APP, 10);
+
+			break;
+
+			#ifdef LOCK_KEY_KEY_E
+			case LOCK_KEY:
+			{
+				UART_PRINTF("LOCK_KEY \r\n");
+				ke_timer_set(KEY_SCAN_TASK, TASK_APP, 10);
+			}
+			break;
+			#endif
+
+			case FEED_KEY:
+			UART_PRINTF("FEED_KEY \r\n");
+			ke_timer_set(KEY_SCAN_TASK, TASK_APP, 10);
+			break;
+
+			default:
+				break;
+		}	
+	}
+	
+	
+#if defined KEY_DOWN_HIGHT
+	jk_gpio_int_config(RECORD_KEY, INT_HIGH_EDGE);
+	jk_gpio_int_config(SET_KEY, INT_HIGH_EDGE);	
+	jk_gpio_int_config(FEED_KEY, INT_HIGH_EDGE);
+
+	#ifdef LOCK_KEY_E
+	jk_gpio_int_config(LOCK_KEY, INT_HIGH_EDGE);
+	#endif
+#else
+	jk_gpio_int_config(FEED_KEY, INT_LOW_EDGE);
+	jk_gpio_int_config(RECORD_KEY, INT_LOW_EDGE);
+	jk_gpio_int_config(SET_KEY, INT_HIGH_EDGE);	
+
+	#ifdef LOCK_KEY_KEY_E
+	jk_gpio_int_config(LOCK_KEY, INT_LOW_EDGE);
+	#endif
+#endif
+	
+	jk_gpio_int_en();
+
+}
+void gpio_init(void)
+{
+	//output
+	gpio_config(MOTOR_PIN_P, OUTPUT, PULL_NONE);
+	gpio_config(SOUND_PLAY, OUTPUT, PULL_NONE);
+	gpio_set(SOUND_PLAY, PLAYER_OFF);
+	gpio_config(SOUND_REC, OUTPUT, PULL_NONE);
+	gpio_set(SOUND_REC, RECORD_OFF);
+	
+	gpio_set(MOTOR_PIN_P, 0);
+
+	#ifdef POWER_HOLD_FUNC
+	gpio_config(PWR_HOLD, OUTPUT, PULL_HIGH);
+	gpio_set(PWR_HOLD, 1);
+	#endif
+
+	#ifndef NO_LED_E
+	gpio_config(LED_GREEN, OUTPUT, PULL_NONE);
+	gpio_config(LED_RED, OUTPUT, PULL_NONE);
+	led_control(LED_OFF,LED_OFF,0);
+	#endif
+	#ifdef MOTOR_REVERSE
+	gpio_config(MOTOR_PIN_N, OUTPUT, PULL_NONE);
+	gpio_set(MOTOR_PIN_N, 0);
+	#endif
+	#ifdef POWER_BEEP 
+	gpio_config(BUZZER_EN, OUTPUT, PULL_LOW);
+	gpio_set(BUZZER_EN, 0);
+	#endif
+	
+	//input
+	gpio_config(MOTOR_DET, INPUT, PULL_HIGH);
+	gpio_config(CHARGE_DET, INPUT, PULL_NONE);
+	#ifdef FUNC_315MHZ
+	gpio_config(DATA_315MHZ, INPUT, PULL_NONE);
+	#endif
+	
+	//interrupt
+#if defined KEY_DOWN_HIGHT
+	gpio_config(RECORD_KEY, INPUT, PULL_LOW);
+	gpio_config(SET_KEY, INPUT, PULL_LOW);
+
+	jk_gpio_int_config(RECORD_KEY, INT_HIGH_EDGE);
+	jk_gpio_int_config(SET_KEY, INT_HIGH_EDGE);
+
+	gpio_config(FEED_KEY, INPUT, PULL_LOW);
+	jk_gpio_int_config(FEED_KEY, INT_HIGH_EDGE);
+	#ifdef LOCK_KEY_KEY_E
+	gpio_config(LOCK_KEY, INPUT, PULL_LOW);
+	jk_gpio_int_config(LOCK_KEY, INT_HIGH_EDGE);
+	#endif
+
+#else
+	gpio_config(RECORD_KEY, INPUT, PULL_HIGH);
+	jk_gpio_int_config(RECORD_KEY, INT_LOW_EDGE);
+	
+	gpio_config(FEED_KEY, INPUT, PULL_HIGH);
+	jk_gpio_int_config(FEED_KEY, INT_LOW_EDGE);
+	
+	gpio_config(SET_KEY, INPUT, PULL_LOW);
+	jk_gpio_int_config(SET_KEY, INT_HIGH_EDGE);
+	
+#ifdef LOCK_KEY_KEY_E
+	gpio_config(LOCK_KEY, INPUT, PULL_HIGH);
+	jk_gpio_int_config(LOCK_KEY, INT_LOW_EDGE);
+	#endif
+#endif
+	
+	jk_gpio_int_en();
+	
+	gpio_cb_register(gpio_irq_handler);
+	
+}
+#endif
+#if DU5C_B01
+static void gpio_irq_handler(uint32_t pin)
+{
+	UART_PRINTF("key pin:%d \r\n",pin);
+
+	pin = suble_gpio_irq_pin_change_format(pin);
+				
+//	if(keep_dowm_flag == 0)
+	{
+		switch(pin)
+		{
+			case RECORD_KEY:
+			UART_PRINTF("RECORD_KEY \r\n");
+//			if(lock_flag == 0 && (set_val_flag == 0))
+//				ke_timer_set(REC_KEY_TASK, TASK_APP, 10);
+//			else if(set_val_flag)
+				ke_timer_set(REC_KEY_TASK, TASK_APP, 10);
+			break;
+
+			case SET_KEY:
+			UART_PRINTF("SET_KEY \r\n");
+			ke_timer_set(KEY_SCAN_TASK, TASK_APP, 10);
+
+			break;
+
+			#ifdef LOCK_KEY_KEY_E
+			case LOCK_KEY:
+			{
+				UART_PRINTF("LOCK_KEY \r\n");
+				ke_timer_set(KEY_SCAN_TASK, TASK_APP, 10);
+			}
+			break;
+			#endif
+
+			case FEED_KEY:
+			UART_PRINTF("FEED_KEY \r\n");
+			ke_timer_set(KEY_SCAN_TASK, TASK_APP, 10);
+			break;
+
+			default:
+				break;
+		}	
+	}
+	
+	
+#if defined KEY_DOWN_HIGHT
+	jk_gpio_int_config(RECORD_KEY, INT_HIGH_EDGE);
+	jk_gpio_int_config(SET_KEY, INT_HIGH_EDGE);	
+	jk_gpio_int_config(FEED_KEY, INT_HIGH_EDGE);
+
+	#ifdef LOCK_KEY_E
+	jk_gpio_int_config(LOCK_KEY, INT_HIGH_EDGE);
+	#endif
+#else
+	jk_gpio_int_config(FEED_KEY, INT_LOW_EDGE);
+	jk_gpio_int_config(RECORD_KEY, INT_LOW_EDGE);
+	jk_gpio_int_config(SET_KEY, INT_LOW_EDGE);	
+
+	#ifdef LOCK_KEY_KEY_E
+	jk_gpio_int_config(LOCK_KEY, INT_LOW_EDGE);
+	#endif
+#endif
+	
+	jk_gpio_int_en();
+
+}
+void gpio_init(void)
+{
+	//output
+	gpio_config(MOTOR_PIN_P, OUTPUT, PULL_NONE);
+	gpio_config(SOUND_PLAY, OUTPUT, PULL_NONE);
+	gpio_set(SOUND_PLAY, PLAYER_OFF);
+	gpio_config(SOUND_REC, OUTPUT, PULL_NONE);
+	gpio_set(SOUND_REC, RECORD_OFF);
+	
+	gpio_set(MOTOR_PIN_P, 0);
+
+	#ifdef POWER_HOLD_FUNC
+	gpio_config(PWR_HOLD, OUTPUT, PULL_HIGH);
+	gpio_set(PWR_HOLD, 1);
+	#endif
+
+	#ifndef NO_LED_E
+	gpio_config(LED_GREEN, OUTPUT, PULL_NONE);
+	gpio_config(LED_RED, OUTPUT, PULL_NONE);
+	led_control(LED_OFF,LED_OFF,0);
+	#endif
+	#ifdef MOTOR_REVERSE
+	gpio_config(MOTOR_PIN_N, OUTPUT, PULL_NONE);
+	gpio_set(MOTOR_PIN_N, 0);
+	#endif
+	#ifdef POWER_BEEP 
+	gpio_config(BUZZER_EN, OUTPUT, PULL_LOW);
+	gpio_set(BUZZER_EN, 0);
+	#endif
+	
+	//input
+	gpio_config(MOTOR_DET, INPUT, PULL_HIGH);
+	gpio_config(CHARGE_DET, INPUT, PULL_NONE);
+	#ifdef FUNC_315MHZ
+	gpio_config(DATA_315MHZ, INPUT, PULL_NONE);
+	#endif
+	
+	//interrupt
+#if defined KEY_DOWN_HIGHT
+	gpio_config(RECORD_KEY, INPUT, PULL_LOW);
+	gpio_config(SET_KEY, INPUT, PULL_LOW);
+	gpio_config(FEED_KEY, INPUT, PULL_LOW);
+
+	jk_gpio_int_config(RECORD_KEY, INT_HIGH_EDGE);
+	jk_gpio_int_config(SET_KEY, INT_HIGH_EDGE);
+	jk_gpio_int_config(FEED_KEY, INT_HIGH_EDGE);
+	#ifdef LOCK_KEY_KEY_E
+	gpio_config(LOCK_KEY, INPUT, PULL_LOW);
+	jk_gpio_int_config(LOCK_KEY, INT_HIGH_EDGE);
+	#endif
+
+#else
+	gpio_config(RECORD_KEY, INPUT, PULL_HIGH);
+	jk_gpio_int_config(RECORD_KEY, INT_LOW_EDGE);
+	
+	gpio_config(FEED_KEY, INPUT, PULL_HIGH);
+	jk_gpio_int_config(FEED_KEY, INT_LOW_EDGE);
+	
+	gpio_config(SET_KEY, INPUT, PULL_HIGH);
+	jk_gpio_int_config(SET_KEY, INT_LOW_EDGE);
+	
+	#ifdef LOCK_KEY_KEY_E
+	gpio_config(LOCK_KEY, INPUT, PULL_HIGH);
+	jk_gpio_int_config(LOCK_KEY, INT_LOW_EDGE);
+	#endif
+#endif
+	
+	jk_gpio_int_en();
+	
+	gpio_cb_register(gpio_irq_handler);
+	
+}
+#endif
 void gpio_triger(uint8_t gpio)
 {
 	gpio_set(gpio, 1);
@@ -185,83 +483,95 @@ void gpio_cb_register(GPIO_INT_CALLBACK_T cb)
 void gpio_isr(void)
 {
 	REG_APB5_GPIO_WUATOD_ENABLE = 0x00000000; 
-	REG_APB5_GPIO_WUATOD_STAT = 0xffffffff;
     REG_AHB0_ICU_INT_ENABLE &= (~(0x01 << 9));
     //gpio_triger(0x14);
-    UART_PRINTF("1\r\n");
-
+//    UART_PRINTF("1\r\n");
 
 	//triger int callback
 	if(gpio_int_cb)
 	{
-		(*gpio_int_cb)();
+//		UART_PRINTF("pin111:%X\r\n",REG_APB5_GPIO_WUATOD_STAT);
+		(*gpio_int_cb)(REG_APB5_GPIO_WUATOD_STAT);
 	}
+	REG_APB5_GPIO_WUATOD_STAT = 0xffffffff;
 }
 
-void gpio_test_init(void)
-{
-	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
-	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
-	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
-	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
-	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
-}
+//void gpio_test_init(void)
+//{
+//	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
+//	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
+//	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
+//	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
+//	gpio_config(GPIOC_0, FLOAT, PULL_HIGH);
+//}
 
-void gpio_sleep(void)
-{
-	GPIO_CFG_BACKUP[0] = REG_APB5_GPIOA_CFG;
-	GPIO_CFG_BACKUP[1] = REG_APB5_GPIOB_CFG;
-	GPIO_CFG_BACKUP[2] = REG_APB5_GPIOC_CFG;
-	GPIO_CFG_BACKUP[3] = REG_APB5_GPIOD_CFG;
-	GPIO_CFG_BACKUP[4] = REG_APB5_GPIOE_CFG;
-	
-	GPIO_DATA_BACKUP[0] = REG_APB5_GPIOA_DATA;
-	GPIO_DATA_BACKUP[1] = REG_APB5_GPIOB_DATA;
-	GPIO_DATA_BACKUP[2] = REG_APB5_GPIOC_DATA;
-	GPIO_DATA_BACKUP[3] = REG_APB5_GPIOD_DATA;
-	GPIO_DATA_BACKUP[4] = REG_APB5_GPIOE_DATA;
+//void gpio_sleep(void)
+//{
+//	GPIO_CFG_BACKUP[0] = REG_APB5_GPIOA_CFG;
+//	GPIO_CFG_BACKUP[1] = REG_APB5_GPIOB_CFG;
+//	GPIO_CFG_BACKUP[2] = REG_APB5_GPIOC_CFG;
+//	GPIO_CFG_BACKUP[3] = REG_APB5_GPIOD_CFG;
+//	GPIO_CFG_BACKUP[4] = REG_APB5_GPIOE_CFG;
+//	
+//	GPIO_DATA_BACKUP[0] = REG_APB5_GPIOA_DATA;
+//	GPIO_DATA_BACKUP[1] = REG_APB5_GPIOB_DATA;
+//	GPIO_DATA_BACKUP[2] = REG_APB5_GPIOC_DATA;
+//	GPIO_DATA_BACKUP[3] = REG_APB5_GPIOD_DATA;
+//	GPIO_DATA_BACKUP[4] = REG_APB5_GPIOE_DATA;
 
-	
-	REG_APB5_GPIOA_CFG = 0x0000ffff;
-	REG_APB5_GPIOA_DATA = 0x0000ffff;
-	
-	REG_APB5_GPIOB_CFG = 0x0000ffff;
-	REG_APB5_GPIOB_DATA = 0x0000ffff;
-	
-	REG_APB5_GPIOC_CFG = 0x0000ffff;
-	REG_APB5_GPIOC_DATA = 0x0000ffff;
-	
-	REG_APB5_GPIOD_CFG = 0x0000ffff;
-	REG_APB5_GPIOD_DATA = 0x0000ffff;
-	
-	REG_APB5_GPIOE_CFG = 0x0000ffff;
-	REG_APB5_GPIOE_DATA = 0x0000ffff;
-}
+//	
+//	REG_APB5_GPIOA_CFG = 0x0000ffff;
+//	REG_APB5_GPIOA_DATA = 0x0000ffff;
+//	
+//	REG_APB5_GPIOB_CFG = 0x0000ffff;
+//	REG_APB5_GPIOB_DATA = 0x0000ffff;
+//	
+//	REG_APB5_GPIOC_CFG = 0x0000ffff;
+//	REG_APB5_GPIOC_DATA = 0x0000ffff;
+//	
+//	REG_APB5_GPIOD_CFG = 0x0000ffff;
+//	REG_APB5_GPIOD_DATA = 0x0000ffff;
+//	
+//	REG_APB5_GPIOE_CFG = 0x0000ffff;
+//	REG_APB5_GPIOE_DATA = 0x0000ffff;
+//}
 
-void gpio_wakeup(void)
-{
-	REG_APB5_GPIOA_CFG = GPIO_CFG_BACKUP[0];
-	REG_APB5_GPIOB_CFG = GPIO_CFG_BACKUP[1];
-	REG_APB5_GPIOC_CFG = GPIO_CFG_BACKUP[2];
-	REG_APB5_GPIOD_CFG = GPIO_CFG_BACKUP[3];
-	REG_APB5_GPIOE_CFG = GPIO_CFG_BACKUP[4];
-	
-	REG_APB5_GPIOA_DATA = GPIO_DATA_BACKUP[0];
-	REG_APB5_GPIOB_DATA = GPIO_DATA_BACKUP[1];	
-	REG_APB5_GPIOC_DATA = GPIO_DATA_BACKUP[2];
-	REG_APB5_GPIOD_DATA = GPIO_DATA_BACKUP[3];
-	REG_APB5_GPIOE_DATA = GPIO_DATA_BACKUP[4];
-}
-
+//void gpio_wakeup(void)
+//{
+//	REG_APB5_GPIOA_CFG = GPIO_CFG_BACKUP[0];
+//	REG_APB5_GPIOB_CFG = GPIO_CFG_BACKUP[1];
+//	REG_APB5_GPIOC_CFG = GPIO_CFG_BACKUP[2];
+//	REG_APB5_GPIOD_CFG = GPIO_CFG_BACKUP[3];
+//	REG_APB5_GPIOE_CFG = GPIO_CFG_BACKUP[4];
+//	
+//	REG_APB5_GPIOA_DATA = GPIO_DATA_BACKUP[0];
+//	REG_APB5_GPIOB_DATA = GPIO_DATA_BACKUP[1];	
+//	REG_APB5_GPIOC_DATA = GPIO_DATA_BACKUP[2];
+//	REG_APB5_GPIOD_DATA = GPIO_DATA_BACKUP[3];
+//	REG_APB5_GPIOE_DATA = GPIO_DATA_BACKUP[4];
+//}
 
 
 
 void DEBUG_MSG(uint8_t x)
 {
-#if GPIO_DBG_MSG
-	REG_APB5_GPIOA_DATA = x & 0xff;
-	gpio_triger(GPIOD_4);
+
+#if (GPIO_DBG_MSG)    
+    REG_APB5_GPIOD_DATA &= 0xffffffdf;
+    REG_APB5_GPIOB_DATA = x&0xFF;
+    
+    if(x&0x20)
+        REG_APB5_GPIOD_DATA |= 0X02;
+    else
+        REG_APB5_GPIOD_DATA &= ~0X02;
+        
+    REG_APB5_GPIOD_DATA |= 0x00000020;
+
+#else
+    return;
 #endif
 }
+
+
 
 

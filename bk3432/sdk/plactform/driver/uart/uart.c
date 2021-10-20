@@ -258,7 +258,7 @@ int uart_printf(const char *fmt,...)
     uart_putchar(uart_buff);
 	if(n > sizeof(uart_buff))
 	{
-		uart_putchar("buff full \r\n");
+		uart_putchar("buff1 full \r\n");
 	}
 		
     return n;
@@ -353,7 +353,7 @@ void uart_init(uint32_t baudrate)
     uart_env.rx.dummy    = NULL;
 
 	REG_AHB0_ICU_INT_ENABLE |= (0x01 << 5);
-#if (UART_PRINTF_EN && UART_DRIVER)	
+#if (UART_PRINTF_EN && UART_DRIVER && UART_1_PRINTF)	
 	uart_stack_register(uart_printf);
 #endif
 }	

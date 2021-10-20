@@ -35,18 +35,38 @@
 #include "user_config.h"
 
 
-#if (UART_PRINTF_EN && UART_DRIVER)
+//#if (UART_PRINTF_EN && UART_DRIVER)
 
-#if  !BLE_TESTER
-//#define UART2_PRINTF	uart2_printf //uart_printf
+//#if  !BLE_TESTER
+////#define UART2_PRINTF	uart2_printf //uart_printf
+//#else
+//#define UART2_PRINTF uart2_printf_null //uart_printf 
+//#endif //!BLE_TESTER
+
+//#else
+//#define UART2_PRINTF uart2_printf_null 
+//#endif // #if UART_PRINTF_EN
+#if (UART_DRIVER || UART2_DRIVER)
+
+#if  !BLE_TESTER &&  UART_1_PRINTF
+#ifndef UART_PRINTF
+#define UART_PRINTF	uart_printf //uart_printf
+//#define UART_PUTCHAR uart_putchar //uart_printf
+#endif
+
+#elif !BLE_TESTER &&  UART_2_PRINTF
+#ifndef UART_PRINTF
+#define UART_PRINTF uart2_printf //uart_printf 
+//#define UART_PUTCHAR uart2_putchar //uart_printf
+#endif
+
 #else
-#define UART2_PRINTF uart2_printf_null //uart_printf 
+#define UART_PRINTF uart_printf_null //uart_printf 
 #endif //!BLE_TESTER
 
 #else
-#define UART2_PRINTF uart2_printf_null 
+#define UART2_PRINTF uart2_printf_null
 #endif // #if UART_PRINTF_EN
-
 
 
 /*
@@ -106,14 +126,14 @@ extern volatile unsigned long uart2_rx_index ;
  * @brief Enable UART flow.
  *****************************************************************************************
  */
-//void uart2_flow_on(void);
+void uart2_flow_on(void);
 
 /**
  ****************************************************************************************
  * @brief Disable UART flow.
  *****************************************************************************************
  */
-//bool uart2_flow_off(void);
+bool uart2_flow_off(void);
 #endif //CFG_ROM
 
 /**
@@ -133,7 +153,7 @@ void uart2_finish_transfers(void);
  * @param[in]  dummy    Dummy data pointer returned to callback when reception is finished
  *****************************************************************************************
  */
-//void uart2_read(uint8_t *bufptr, uint32_t size, void (*callback) (void*, uint8_t), void* dummy);
+void uart2_read(uint8_t *bufptr, uint32_t size, void (*callback) (void*, uint8_t), void* dummy);
 
 /**
  ****************************************************************************************
@@ -145,7 +165,7 @@ void uart2_finish_transfers(void);
  * @param[in] dummy    Dummy data pointer returned to callback when transmission is finished
  *****************************************************************************************
  */
-//void uart2_write(uint8_t *bufptr, uint32_t size, void (*callback) (void*, uint8_t), void* dummy);
+void uart2_write(uint8_t *bufptr, uint32_t size, void (*callback) (void*, uint8_t), void* dummy);
 
 #if defined(CFG_ROM)
 /**

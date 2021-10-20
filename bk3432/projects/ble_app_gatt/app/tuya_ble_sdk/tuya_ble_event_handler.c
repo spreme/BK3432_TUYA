@@ -366,8 +366,8 @@ void tuya_ble_handle_data_prod_test_response_evt(tuya_ble_evt_param_t *evt)
 void tuya_ble_handle_uart_cmd_evt(tuya_ble_evt_param_t *evt)
 {
     uint8_t sum;
-    uint8_t *uart_send_buffer;
-    uint16_t uart_send_len;
+//    uint8_t *uart_send_buffer;
+//    uint16_t uart_send_len;
 
     TUYA_BLE_LOG_HEXDUMP_DEBUG("received uart cmd data",(uint8_t*)evt->uart_cmd_data.p_data,evt->uart_cmd_data.data_len);//
 

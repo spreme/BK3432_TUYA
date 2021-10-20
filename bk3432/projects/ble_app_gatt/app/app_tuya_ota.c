@@ -168,14 +168,14 @@ static void tuya_ota_file_info_req(uint8_t*recv_data,uint32_t recv_len)
 {
     uint8_t p_buf[30];
     uint8_t payload_len = 0;
-    uint8_t encry_mode = 0;
+//    uint8_t encry_mode = 0;
     uint32_t file_version;
     uint32_t file_length;
     uint32_t file_crc;
-    bool file_md5;
+//    bool file_md5;
     // uint8_t file_md5[16];
     uint8_t state = 0;
-    uint32_t crc_temp  = 0;
+//    uint32_t crc_temp  = 0;
 	uint32_t ack_sn = 0;
 
     ack_sn  = (recv_data[1]<<24)|(recv_data[2]<<16)|(recv_data[3]<<8)|recv_data[4];
@@ -283,8 +283,8 @@ static void tuya_ota_offset_req(uint8_t*recv_data,uint32_t recv_len)
 {
     uint8_t p_buf[5];
     uint8_t payload_len = 0;
-    uint8_t encry_mode = 0;
-    uint32_t offset = 0,offset_temp = 0;
+//    uint8_t encry_mode = 0;
+    uint32_t offset = 0;//,offset_temp = 0;
     uint32_t ack_sn = 0;
 
     ack_sn  = (recv_data[1]<<24)|(recv_data[2]<<16)|(recv_data[3]<<8)|recv_data[4];
@@ -336,7 +336,7 @@ static void tuya_ota_data_req(uint8_t*recv_data,uint32_t recv_len)
     uint8_t payload_len = 0;
     uint8_t state = 0;
     uint16_t data_length;
-    uint8_t *p_value;
+//    uint8_t *p_value;
     uint32_t write_addr = 0;
     uint32_t ack_sn = 0;
 
@@ -475,7 +475,7 @@ static void tuya_ota_end_req(uint8_t*recv_data,uint32_t recv_len)
     uint8_t p_buf[2];
     uint8_t payload_len = 0;
 	uint32_t ack_sn = 0;
-    bool check_result;
+//    bool check_result;
 	uint8_t state;
     ack_sn  = (recv_data[1]<<24)|(recv_data[2]<<16)|(recv_data[3]<<8)|recv_data[4];
 
@@ -593,7 +593,7 @@ uint8_t tuya_ota_init_disconnect(void)
         current_package = 0;
         last_package = 0;
     }
-
+	return 0;
 }
 
 

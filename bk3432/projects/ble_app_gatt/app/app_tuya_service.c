@@ -63,10 +63,10 @@ struct app_tuya_env_tag app_tuya_env;
  */
 
 #include "tuya_ble_secure.h"
-static uint8_t test_buf[32];
-static uint8_t key[16];
-static uint8_t iv[16];
-static uint32_t out_len;
+//static uint8_t test_buf[32];
+//static uint8_t key[16];
+//static uint8_t iv[16];
+//static uint32_t out_len;
 tuya_ble_parameters_settings_t para;
 void app_tuya_service_init(void)
 {

@@ -146,6 +146,19 @@ void IRQ_Exception(void)
         }	
     }
 
+//#if (UART_DRIVER)	
+//   	// call the function handler	
+//	if(IntStat & INT_STATUS_UART_bit)
+//	{
+//		irq_status |= INT_STATUS_UART_bit;
+//		uart_isr();
+//	}
+//    if(IntStat & INT_STATUS_UART2_bit)
+//    {
+//        irq_status |= INT_STATUS_UART2_bit;
+//        uart2_isr();
+//    }		
+//#endif
 #if (UART_DRIVER)	
    	// call the function handler	
 	if(IntStat & INT_STATUS_UART_bit)
@@ -153,13 +166,15 @@ void IRQ_Exception(void)
 		irq_status |= INT_STATUS_UART_bit;
 		uart_isr();
 	}
-    if(IntStat & INT_STATUS_UART2_bit)
-    {
-        irq_status |= INT_STATUS_UART2_bit;
-        uart2_isr();
-    }		
 #endif
-
+#if (UART2_DRIVER)	
+   	// call the function handler	
+    if(IntStat & INT_STATUS_UART2_bit)
+	{
+		irq_status |= INT_STATUS_UART2_bit;
+		uart2_isr();
+	}
+#endif
 #if (GPIO_DRIVER)
 	if(IntStat & INT_STATUS_GPIO_bit)
 	{

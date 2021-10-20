@@ -282,7 +282,7 @@ tuya_ble_status_t tuya_ble_common_uart_send_full_instruction_received(uint8_t *p
 {
     tuya_ble_status_t ret = TUYA_BLE_SUCCESS;
     tuya_ble_evt_param_t event;
-    uint16_t rev_len,data_len;
+//    uint16_t rev_len,data_len;
     uint8_t* uart_evt_buffer;
 
     if(len<7)
@@ -861,7 +861,7 @@ void tuya_ble_disconnected_handler(void)
  * */
 tuya_ble_status_t tuya_ble_sdk_init(tuya_ble_device_param_t * param_data)
 {
-    tuya_ble_cb_evt_param_t event;
+//    tuya_ble_cb_evt_param_t event;
     uint8_t device_id_temp[16];
     uint8_t device_id_temp2[20];
 

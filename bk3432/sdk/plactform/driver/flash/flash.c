@@ -168,15 +168,10 @@ void flash_erase(uint8_t flash_type, uint32_t address, uint32_t size)
 void flash_write(uint8_t flash_space, uint32_t address, uint32_t length, uint8_t *buffer)
 {
 	uint32_t data = 0xffffffff;
-
 	uint8_t  cnt;
-
 	//uint8_t 	subcnt;
-
 	//uint8_t *p_data = (uint8_t *)&data;
-
 	//uint8_t offset;
-
 	//uint8_t lenoffset;
 
 	// Check parameters

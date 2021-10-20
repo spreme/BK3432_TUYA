@@ -45,10 +45,14 @@ struct rom_env_tag
 
 	void (*assert_warn)(int param0, int param1, const char * file, int line);
 		
+	#if UART_1_INIT
 	uint8_t (*Read_Uart_Buf)(void);
-	
 	void (*uart_clear_rxfifo)(void);
-	
+	#endif
+	#if UART_2_INIT
+	uint8_t (*Read_Uart2_Buf)(void);
+	void (*uart2_clear_rxfifo)(void);
+	#endif	
 };
 
 

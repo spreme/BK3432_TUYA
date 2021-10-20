@@ -11,7 +11,6 @@ extern "C" {
 #include <string.h>        // string manipulation
 #include <stddef.h>        // standard definition
 #include "BK_HCI_Protocol.h"
-#include "BK3435_reg.h"
 
 
 

@@ -41,6 +41,8 @@ typedef struct
 void utc_update( void );
 void utc_set_time(UTCTimeStruct *tm);
 void utc_get_time(UTCTimeStruct *tm);
+void utc_set_clock( UTCTime newTime );
+uint32_t utc_get_clock( void );
 
 #ifdef __cplusplus
 }

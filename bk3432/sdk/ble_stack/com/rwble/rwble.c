@@ -41,6 +41,7 @@
 #include "reg_blecore.h"
 #include "user_config.h"
 #include "wdt.h"
+#include "user_config.h"
 
 #if (NVDS_SUPPORT)
 #include "nvds.h"                    // NVDS Definitions
@@ -267,8 +268,11 @@ __BLEIRQ void rwble_isr(void)
 			}
 			lld_evt_end_isr(false);
 
-			wdt_feed(0x3fff);
-
+			if(restore_flag == 0)
+			{
+				wdt_feed(0x3fff);
+			}
+			
 			DBG_SWDIAG(BLE_ISR, EVENTINT, 0);
 		}
 

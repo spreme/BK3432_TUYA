@@ -125,6 +125,7 @@ extern void (*p_PWM_Int_Handler[PWM_CHANNEL_NUMBER_MAX])(unsigned char ucPWM_cha
 
 //void pwm_init(void);
 void pwm_init(PWM_DRV_DESC *pwm_drv_desc);
+void pwm_set_duty(PWM_DRV_DESC *pwm_drv_desc);
 
 void pwm_enable(unsigned char ucChannel);
 

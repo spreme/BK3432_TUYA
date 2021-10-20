@@ -98,10 +98,10 @@
 
 
 unsigned char uart2_rx_buf[UART2_RX_FIFO_MAX_COUNT];
-//unsigned char uart2_tx_buf[UART2_TX_FIFO_MAX_COUNT];
+unsigned char uart2_tx_buf[UART2_TX_FIFO_MAX_COUNT];
 volatile bool uart2_rx_done = 0;
 volatile unsigned long uart2_rx_index = 0;
-uint8_t cur_read_buf_idx2 = 0;
+uint8_t uart2_cur_read_buf_idx = 0;
 
 
 #define UART2_READ_BYTE()                 (REG_APB3_UART2_PORT&0xff)
@@ -204,7 +204,7 @@ struct uart_env_tag
 
 /// uart environment structure
 struct uart_env_tag uart2_env;
-//char uart2_buff[64];
+char uart2_buff[64];
 
 
 
@@ -222,7 +222,7 @@ static UART2_RX_CALLBACK_T uart2_rx_cb = NULL;
  */
 uint8_t Read_Uart2_Buf(void)
 {
-	return 0;//uart2_rx_buf[cur_read_buf_idx2++];
+	return uart2_rx_buf[uart2_cur_read_buf_idx++];
 }	
 
 uint8_t Uart2_Read_Byte(void)
@@ -230,6 +230,10 @@ uint8_t Uart2_Read_Byte(void)
 	return (REG_APB3_UART2_PORT&0xff);
 }	
 
+int uart_printf_null(const char *fmt,...)
+{
+	return 0;
+}
 
 int uart2_putchar(char * st)
 {
@@ -245,24 +249,27 @@ int uart2_putchar(char * st)
 	} 
     return num;
 }
-/*
 int uart2_printf(const char *fmt,...)
 { 
-	int n;	
-	
+#if (UART2_DRIVER)
+	int n;
+
 	va_list ap;
 	va_start(ap, fmt);
 	n=vsprintf(uart2_buff, fmt, ap);
 	va_end(ap);
-    uart2_putchar(uart2_buff);
+	uart2_putchar(uart2_buff);
 	if(n > sizeof(uart2_buff))
 	{
-		uart2_putchar("buff full \r\n");
+		uart2_putchar("buff2 full \r\n");
 	}
-		
-    return n;
+	return n;
+#else
+    return 0;
+#endif
 }
 
+/*
 int uart2_printf_null(const char *fmt,...)
 {
 	return 0;
@@ -357,7 +364,7 @@ void uart2_init(uint32_t baudrate)
 #endif
 }	
 
-/*
+
 
 void uart2_flow_on(void)
 {
@@ -382,7 +389,7 @@ bool uart2_flow_off(void)
 	  return true;
 	
 }
-*/
+
 void uart2_finish_transfers(void)
 {
     uart2_flow_en_setf(1);
@@ -391,7 +398,7 @@ void uart2_finish_transfers(void)
     while(!uart2_tx_fifo_empty_getf());
 }
 
-/*
+
 void uart2_read(uint8_t *bufptr, uint32_t size, void (*callback) (void*, uint8_t), void* dummy)
 {
     // Sanity check
@@ -439,7 +446,7 @@ void uart2_write(uint8_t *bufptr, uint32_t size, void (*callback) (void*, uint8_
 		callback(dummy, RWIP_EIF_STATUS_OK);
 	}
 }
-*/
+
 static void uart2_send_byte(unsigned char data)
 {
 	while (!uart2_tx_fifo_empty_getf());

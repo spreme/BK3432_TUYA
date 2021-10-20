@@ -26,12 +26,11 @@
 #ifndef TUYA_BLE_PORT_H__
 #define TUYA_BLE_PORT_H__
 
-
 #include "tuya_ble_stdlib.h"
 #include "tuya_ble_type.h"
 #include "uart.h"
+#include "uart2.h"
 
-   
 #define TUYA_BLE_PRINTF(...)            UART_PRINTF(__VA_ARGS__)
 #define TUYA_BLE_HEXDUMP(...)           tuya_hexdump(__VA_ARGS__)
 

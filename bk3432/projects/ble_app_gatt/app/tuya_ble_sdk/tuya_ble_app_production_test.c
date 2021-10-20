@@ -263,7 +263,7 @@ static  void tuya_ble_auc_write_auth_info(uint8_t *para, uint16_t len)
 {
     uint8_t mac_temp[6];
     uint8_t mac_char[13];
-    uint8_t pid_len = 0,i = 0,pid_pos = 0;
+//    uint8_t pid_len = 0,i = 0,pid_pos = 0;
     char true_buf[] = "{\"ret\":true}";
     char false_buf[] = "{\"ret\":false}";
     
@@ -363,20 +363,17 @@ static  void tuya_ble_auc_write_auth_info(uint8_t *para, uint16_t len)
 }
 
 
-
-
 static void tuya_ble_auc_query_info(uint8_t *para, uint16_t len)
 {
-    
     uint8_t i=0;
-    uint8_t mac_temp[13];
+//    uint8_t mac_temp[13];
     uint8_t *alloc_buf = NULL;
     
     if(tuya_ble_production_test_flag != 1)
     {
         return;
     }    
-       
+
     TUYA_BLE_LOG_DEBUG("AUC QUERY INFO!"); 
 
     alloc_buf = (uint8_t *)tuya_ble_malloc(256);
@@ -633,27 +630,27 @@ static void tuya_ble_auc_rssi_test(uint8_t *para, uint16_t len)
 
 __TUYA_BLE_WEAK void tuya_ble_custom_app_production_test_process(uint8_t channel,uint8_t *p_in_data,uint16_t in_len)
 {
-    uint16_t cmd = 0;
-    uint8_t *data_buffer = NULL;
-    uint16_t data_len = ((p_in_data[4]<<8) + p_in_data[5]);
-       
-    if((p_in_data[6] != 3)||(data_len<3))
-        return;
-    
-    cmd = (p_in_data[7]<<8) + p_in_data[8];
-    data_len -= 3;
-    if(data_len>0)
-    {
-        data_buffer = p_in_data+9;
-    }
-    
-    switch(cmd)
-    {   
+//    uint16_t cmd = 0;
+//    uint8_t *data_buffer = NULL;
+//    uint16_t data_len = ((p_in_data[4]<<8) + p_in_data[5]);
+//       
+//    if((p_in_data[6] != 3)||(data_len<3))
+//        return;
+//    
+//    cmd = (p_in_data[7]<<8) + p_in_data[8];
+//    data_len -= 3;
+//    if(data_len>0)
+//    {
+//        data_buffer = p_in_data+9;
+//    }
+//    
+//    switch(cmd)
+//    {   
 
-        
-        default:
-            break;
-    };    
+//        
+//        default:
+//            break;
+//    };    
     
     
 }

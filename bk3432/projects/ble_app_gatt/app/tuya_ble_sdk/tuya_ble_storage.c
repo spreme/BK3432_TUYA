@@ -55,7 +55,8 @@ static uint32_t auth_settings_crc_get(tuya_ble_auth_settings_t const * p_setting
 
 static bool auth_settings_crc_ok(tuya_ble_auth_settings_t const * p_settings,uint8_t *flash_update)
 {
-    uint32_t crc,crc_old;
+//    uint32_t crc,crc_old;
+    uint32_t crc;
     if (p_settings->crc != 0xFFFFFFFF)
     {
         // CRC is set. Content must be valid

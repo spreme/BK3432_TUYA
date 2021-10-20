@@ -3,6 +3,7 @@
 #include <stddef.h>        // standard definition
 #include "BK3432_reg.h"
 #include "wdt.h"
+#include "user_config.h"
 
 uint8_t wdt_disable_flag=0;
 static uint8_t wdt_enable_status=0;
@@ -13,6 +14,7 @@ void wdt_disable(void)
     REG_APB0_WDT_CFG = 0x005A0000;// Step3. Feed dog. Write WDT key: 0x5A firstly and 0xA5 secondly.
     REG_APB0_WDT_CFG = 0x00A50000;
     wdt_enable_status=0;
+//	UART_PRINTF("wdt_disable \r\n");
 }
 
 //每个单位250us，最大0xffff，约16s
@@ -27,7 +29,8 @@ void wdt_enable(uint16_t wdt_cnt)
     REG_APB0_WDT_CFG = (0xA5<<16) + wdt_cnt;
     wdt_disable_flag=0;
     wdt_enable_status=1;
-    
+//	UART_PRINTF("wdt_enable:%d \r\n", wdt_cnt);
+   
 }
 
 
@@ -35,6 +38,7 @@ void wdt_feed(uint16_t wdt_cnt)
 {
     if(wdt_enable_status==1)
     {
+//		UART_PRINTF("wdt_feed:%d \r\n", wdt_cnt);
         // Write WDT key: 0x5A firstly and 0xA5 secondly.
         REG_APB0_WDT_CFG = ((WDKEY_ENABLE1 << WDT_CONFIG_WDKEY_POSI)
                         | (wdt_cnt     << WDT_CONFIG_PERIOD_POSI));

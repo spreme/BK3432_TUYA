@@ -41,13 +41,13 @@
  ****************************************************************************************
  */
 
-#define APP_PRODUCT_ID  "xxxxxxxx" 
+#define APP_PRODUCT_ID  "awvu2aym" 
 
 #define APP_BUILD_FIRMNAME  "tuya_ble_sdk_app_demo_bk3432"
 
 //
-#define TY_APP_VER_NUM       0x0100
-#define TY_APP_VER_STR	     "1.0" 	
+#define TY_APP_VER_NUM       0x0a00
+#define TY_APP_VER_STR	     "10.0" 	
 
 
 #define TY_HARD_VER_NUM       0x0100
