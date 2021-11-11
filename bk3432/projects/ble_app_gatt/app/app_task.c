@@ -70,6 +70,7 @@ uint32_t rec_key_tick = 0;				//录音操作计时标志
 static uint8_t pair_tick = 0;
 uint8_t pair_flag = 0;
 uint8_t pair_timeout = 0;
+uint8_t lock_time_out = 0;				//30s自动锁键计时
 
 #if 1
 /*
@@ -857,22 +858,23 @@ void key_function(uint8_t keep_flag)
 		{
 			if(set_key_tick <= KEY_SHORT_TIME && set_key_tick != 0)				//按键时间小于1s
 			{
-				lock_time++;
-				if(lock_time >= 5)
-				{
-					tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
-					if(ty_plan.lock == 0)
-						ty_plan.lock = 1;
-					else if(ty_plan.lock == 1)
-						ty_plan.lock = 0;
-					
-					save_flash(FLASH_PLAN);
-				
-					lock_led = 1;
-					lock_time = 0;
-					UART_PRINTF("lock/unlock !!!!!!!!!!!! \r\n");
-				}
-				UART_PRINTF("lock_time:%d \r\n",lock_time);
+				lock_time_out = 0;
+//				lock_time++;
+//				if(lock_time >= 5)
+//				{
+//					tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+//					if(ty_plan.lock == 0)
+//						ty_plan.lock = 1;
+//					else if(ty_plan.lock == 1)
+//						ty_plan.lock = 0;
+//					
+//					save_flash(FLASH_PLAN);
+//				
+//					lock_led = 1;
+//					lock_time = 0;
+//					UART_PRINTF("lock/unlock !!!!!!!!!!!! \r\n");
+//				}
+//				UART_PRINTF("lock_time:%d \r\n",lock_time);
 			}
 //			else if(set_key_tick > KEY_LONG_TIME_SET)
 //			{
@@ -883,6 +885,7 @@ void key_function(uint8_t keep_flag)
 		}
 		else if(keep_flag == KEY_SET_E)
 		{
+			lock_time_out = 0;
 			set_key_tick++;
 			if(set_key_tick == KEY_LONG_TIME)
 			{
@@ -930,8 +933,8 @@ void key_function(uint8_t keep_flag)
 		{
 			if(feed_key_tick <= KEY_SHORT_TIME && feed_key_tick != 0)				//按键时间小于1s
 			{
-				tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
-				if(ty_plan.lock == 0)
+//				tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+				if(lock == 0)
 				{
 					feed_key = 1;
 					UART_PRINTF("feed key\r\n");
@@ -944,13 +947,19 @@ void key_function(uint8_t keep_flag)
 //			}
 			feed_key_tick = 0;
 		}
-		else if(keep_flag == KEY_FEED_E)
+		else 
 		{
-			feed_key_tick++;
-			if(feed_key_tick == KEY_LONG_TIME)
+			lock_time_out = 0;
+			if(gpio_get_input(RECORD_KEY) == 0)
+				feed_key_tick = 0;
+			else
 			{
-				restore_flag = 1;
-				UART_PRINTF("restore system !!!!!!!!!!\r\n");
+				feed_key_tick++;
+				if(feed_key_tick == KEY_LONG_TIME)
+				{
+					restore_flag = 1;
+					UART_PRINTF("restore system !!!!!!!!!!\r\n");
+				}
 			}
 		}
 			
@@ -960,6 +969,7 @@ void key_function(uint8_t keep_flag)
 		}
 		else
 		{
+			lock_time_out = 0;
 			if(gpio_get_input(RECORD_KEY) == 0)
 			{
 				pair_tick++;
@@ -981,6 +991,38 @@ void key_function(uint8_t keep_flag)
 				pair_tick = 0;
 			}
 		}
+		
+		if(gpio_get_input(RECORD_KEY))
+		{
+			lock_time = 0;
+		}
+		else
+		{
+			lock_time_out = 0;
+			if(gpio_get_input(FEED_KEY) == 0)
+			{
+				lock_time++;
+				
+				if(lock_time >= 5)
+				{
+//					tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+//					if(ty_plan.lock == 0)
+//						ty_plan.lock = 1;
+//					else if(ty_plan.lock == 1)
+					if(lock)
+					{
+						lock = 0;
+						lock_led = 1;
+					}
+					lock_time = 0;
+					UART_PRINTF("unlock !!!!!!!!!!!! \r\n");
+				}
+			}
+			else
+			{
+				lock_time = 0;
+			}
+		}		
 	}	
 
 }
@@ -1061,9 +1103,9 @@ void key_function(uint8_t keep_flag)
 			if(feed_key_tick <= KEY_SHORT_TIME && feed_key_tick != 0)				//按键时间小于1s
 			{
 				UART_PRINTF("feed key  11111  \r\n");
-				UART_PRINTF("ty_plan.lock:%d  \r\n",ty_plan.lock);
-				tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
-				if(ty_plan.lock == 0)
+				UART_PRINTF("lock:%d  \r\n",lock);
+//				tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+				if(lock == 0)
 				{
 					feed_key = 1;
 					UART_PRINTF("feed key\r\n");
@@ -1101,7 +1143,7 @@ void key_function(uint8_t keep_flag)
 
 void rec_key_callback(void)
 {
-	if(ty_plan.lock == 0)
+	if(lock == 0)
 	{
 		if(gpio_get_input(RECORD_KEY))
 		{
@@ -1122,7 +1164,8 @@ void rec_key_callback(void)
 		}
 		else
 		{
-			if(gpio_get_input(SET_KEY))
+			lock_time_out = 0;
+			if(gpio_get_input(SET_KEY) || gpio_get_input(FEED_KEY) == 0)
 				rec_key_tick = 0;
 			else
 			{
@@ -1178,23 +1221,32 @@ void utc_callback(void)
 {
 	static uint8_t restore_time = 0;
 	static uint8_t rtc_tick = 0;
-	static uint8_t lock_time_out = 0;
 
 	connect_flag = tuya_ble_connect_status_get();
 
 	#if DU_PD01B
-	if(lock_time > 0)
+//	if(lock_time > 0)
+//	{
+//		lock_time_out++;
+//		if(lock_time_out > 2)
+//		{
+//			lock_time = 0;
+//			lock_time_out = 0;
+//		}
+//	}
+//	else
+//	{
+//		lock_time_out = 0;
+//	}
+	if(lock == 0)
 	{
 		lock_time_out++;
-		if(lock_time_out > 2)
+		if(lock_time_out >= 10)
 		{
-			lock_time = 0;
 			lock_time_out = 0;
+			lock = 1;
+			lock_led = 1;
 		}
-	}
-	else
-	{
-		lock_time_out = 0;
 	}
 	#endif
 	

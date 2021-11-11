@@ -46,8 +46,15 @@
 #define APP_BUILD_FIRMNAME  "tuya_ble_sdk_app_demo_bk3432"
 
 //
-#define TY_APP_VER_NUM       0x0a00
-#define TY_APP_VER_STR	     "10.0" 	
+#if DU_PD01B
+#define TY_APP_VER_NUM       0x0a02
+#define TY_APP_VER_STR	     "10.2" 	
+
+
+#else
+#define TY_APP_VER_NUM       0x0a01
+#define TY_APP_VER_STR	     "10.1" 	
+#endif
 
 
 #define TY_HARD_VER_NUM       0x0100

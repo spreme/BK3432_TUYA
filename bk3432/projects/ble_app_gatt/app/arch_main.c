@@ -262,7 +262,7 @@ void beep_init(void)
 FEED_PLAN_t info_default = 
 {
 	FLASH_KEEP_VAL,					//标志位
-	0,								//喂食锁
+//	0,								//喂食锁
 	0,								//RTC是否存时间标志
 	0,								//时区正负
 	8,								//时区
@@ -563,22 +563,22 @@ void rw_main(void)
 static void uart_rx_handler(uint8_t *buf, uint8_t len)
 {
 	
-	for(uint8_t i=0; i<len; i++)
-	{
-		UART_PRINTF("0x%x ", buf[i]);
-	}
-	UART_PRINTF("\r\n");
+//	for(uint8_t i=0; i<len; i++)
+//	{
+//		UART_PRINTF("0x%x ", buf[i]);
+//	}
+//	UART_PRINTF("\r\n");
 	
 }
 #endif
 #if (UART2_DRIVER)
 static void uart2_rx_handler(uint8_t *buf, uint8_t len)
 {
-	for(uint8_t i=0; i<len; i++)
-	{
-		UART_PRINTF("0x%x ", buf[i]);
-	}
-	UART_PRINTF("\r\n");
+//	for(uint8_t i=0; i<len; i++)
+//	{
+//		UART_PRINTF("0x%x ", buf[i]);
+//	}
+//	UART_PRINTF("\r\n");
 }
 #endif
 
