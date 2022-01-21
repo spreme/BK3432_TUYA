@@ -198,8 +198,12 @@ void bdaddr_env_init(void)
 	}
     else
     {
-//        memset(&co_default_bdaddr,0xFE,6);
+		#if TEST_UID
         memcpy(&co_default_bdaddr,tmp_bt_mac_str,6);
+		#else
+		feed_key = 10;						//MAC是默认的，无授权，按键不喂食
+		SET_LED_ON(LED_RED);
+		#endif
     }
 }
 

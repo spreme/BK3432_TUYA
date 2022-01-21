@@ -825,6 +825,8 @@ static int app_tuya_event_handler(ke_msg_id_t const msgid,
  ****************************************************************************************
  */
 #if DU_PD01B
+uint8_t stop_sys_flag = 0;
+
 uint8_t get_key_state()
 {
 	uint8_t key_flag_e = 0;
@@ -852,6 +854,7 @@ uint8_t get_key_state()
 }
 void key_function(uint8_t keep_flag)
 {
+	static uint8_t first_key_flag = 0;
 //	if(key_scan_flag == 0)
 	{
 		if(gpio_get_input(SET_KEY) == 0)
@@ -891,22 +894,7 @@ void key_function(uint8_t keep_flag)
 			{
 				UART_PRINTF("stop system !!!!!!! \r\n");
 				ke_timer_clear(UTC_TASK,TASK_APP);
-				SET_LED_OFF(LED_GREEN);
-				SET_LED_OFF(LED_RED);
-				Delay_ms(100);
-				SET_LED_ON(LED_GREEN);
-				SET_LED_ON(LED_RED);
-				Delay_ms(100);
-				SET_LED_OFF(LED_GREEN);
-				SET_LED_OFF(LED_RED);
-				Delay_ms(100);
-				SET_LED_ON(LED_GREEN);
-				SET_LED_ON(LED_RED);
-				Delay_ms(100);
-				SET_LED_OFF(LED_GREEN);
-				SET_LED_OFF(LED_RED);
-				
-				gpio_set(PWR_HOLD, 0);
+				stop_sys_flag = 1;
 			}
 		}
 			
@@ -933,13 +921,14 @@ void key_function(uint8_t keep_flag)
 		{
 			if(feed_key_tick <= KEY_SHORT_TIME && feed_key_tick != 0)				//按键时间小于1s
 			{
-//				tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
-				if(lock == 0)
+				tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+				if(ty_plan.lock == 0 && first_key_flag != 0 && feed_key != 10)
 				{
 					feed_key = 1;
 					UART_PRINTF("feed key\r\n");
 				}
 			}
+			first_key_flag = 1;
 //			else if(feed_key_tick > KEY_LONG_TIME)
 //			{
 //				key_flag = KEY_FEED_L_UP;
@@ -1005,15 +994,20 @@ void key_function(uint8_t keep_flag)
 				
 				if(lock_time >= 5)
 				{
-//					tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
-//					if(ty_plan.lock == 0)
-//						ty_plan.lock = 1;
-//					else if(ty_plan.lock == 1)
-					if(lock)
-					{
-						lock = 0;
-						lock_led = 1;
-					}
+					tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+					if(ty_plan.lock == 0)
+						ty_plan.lock = 1;
+					else if(ty_plan.lock == 1)
+						ty_plan.lock = 0;
+					
+					save_flash(FLASH_PLAN);
+
+//					if(lock)
+//					{
+//						lock = 0;
+//						lock_led = 1;
+//					}
+					lock_led = 1;
 					lock_time = 0;
 					UART_PRINTF("unlock !!!!!!!!!!!! \r\n");
 				}
@@ -1103,9 +1097,9 @@ void key_function(uint8_t keep_flag)
 			if(feed_key_tick <= KEY_SHORT_TIME && feed_key_tick != 0)				//按键时间小于1s
 			{
 				UART_PRINTF("feed key  11111  \r\n");
-				UART_PRINTF("lock:%d  \r\n",lock);
-//				tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
-				if(lock == 0)
+				tuya_ble_nv_read(BLE_PLAN_ADDR, (uint8_t *) &ty_plan, sizeof(FEED_PLAN_t));
+				UART_PRINTF("lock:%d  \r\n",ty_plan.lock);
+				if(ty_plan.lock == 0 && feed_key != 10)
 				{
 					feed_key = 1;
 					UART_PRINTF("feed key\r\n");
@@ -1143,7 +1137,7 @@ void key_function(uint8_t keep_flag)
 
 void rec_key_callback(void)
 {
-	if(lock == 0)
+	if(ty_plan.lock == 0)
 	{
 		if(gpio_get_input(RECORD_KEY))
 		{
@@ -1238,16 +1232,16 @@ void utc_callback(void)
 //	{
 //		lock_time_out = 0;
 //	}
-	if(lock == 0)
-	{
-		lock_time_out++;
-		if(lock_time_out >= 10)
-		{
-			lock_time_out = 0;
-			lock = 1;
-			lock_led = 1;
-		}
-	}
+//	if(lock == 0)
+//	{
+//		lock_time_out++;
+//		if(lock_time_out >= 10)
+//		{
+//			lock_time_out = 0;
+//			lock = 1;
+//			lock_led = 1;
+//		}
+//	}
 	#endif
 	
 	
@@ -1327,7 +1321,31 @@ void utc_callback(void)
 
 static void led_timer_callback(void)
 {
-	if(lock_led == 1)
+	if(stop_sys_flag > 0)
+	{
+		if(stop_sys_flag == 1)
+		{
+			SET_LED_OFF(LED_GREEN);
+			SET_LED_OFF(LED_RED);
+			Delay_ms(100);
+			SET_LED_ON(LED_GREEN);
+			SET_LED_ON(LED_RED);
+			Delay_ms(100);
+			SET_LED_OFF(LED_GREEN);
+			SET_LED_OFF(LED_RED);
+			Delay_ms(100);
+			SET_LED_ON(LED_GREEN);
+			SET_LED_ON(LED_RED);
+			Delay_ms(100);
+			
+			stop_sys_flag = 2;
+		}
+		SET_LED_OFF(LED_GREEN);
+		SET_LED_OFF(LED_RED);
+		
+		gpio_set(PWR_HOLD, 0);		
+	}
+	else if(lock_led == 1)
 	{
 		UART_PRINTF("lock_led \r\n");
 		lock_led = 0;
@@ -1417,6 +1435,11 @@ static void led_timer_callback(void)
 			SET_LED_ON(LED_RED);
 		}
 		ke_timer_set(LED_TIMER_TASK, TASK_APP, 100);
+	}
+	else if(feed_key == 10)		//MAC是默认的，无授权，按键不喂食,红灯常亮
+	{
+		SET_LED_ON(LED_RED);
+		SET_LED_OFF(LED_GREEN);
 	}
 	else
 	{

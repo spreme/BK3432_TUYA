@@ -36,8 +36,8 @@
 //#######################################################################################//
 //#######################################################################################//
 #if DU_PD01B
-#define USER_VERSION 	"DU_PD01B.0.3"
-#define USER_DATA 		"20211104"
+#define USER_VERSION 	"DU_PD01B.0.7"
+#define USER_DATA 		"20211210"
 
 //	#define RTC_TIME			1		//外部时钟计时
 	#define MOTOR_REVERSE		1		//电机反转功能
@@ -236,7 +236,7 @@ typedef struct {
 typedef struct {
 	uint32_t mark;						//标志位
 //	uint8_t sound;						//声音
-//	uint8_t lock;						//喂食锁
+	uint8_t lock;						//喂食锁
 	uint8_t RTC_flag;					//RTC是否存时间标志
 	uint16_t RTC_zone_f;				//时区正负
 	uint16_t RTC_zone;					//时区

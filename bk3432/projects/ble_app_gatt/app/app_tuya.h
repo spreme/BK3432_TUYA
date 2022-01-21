@@ -35,6 +35,7 @@
 
 #include <stdint.h>          // Standard Integer Definition
 #include "ke_task.h"         // Kernel Task Definition
+#include "user_config.h"         // Kernel Task Definition
 
 /*
  * STRUCTURES DEFINITION
@@ -47,9 +48,8 @@
 
 //
 #if DU_PD01B
-#define TY_APP_VER_NUM       0x0a02
-#define TY_APP_VER_STR	     "10.2" 	
-
+#define TY_APP_VER_NUM       0x0a04
+#define TY_APP_VER_STR	     "10.4" 	
 
 #else
 #define TY_APP_VER_NUM       0x0a01
